@@ -27,12 +27,40 @@ const users = [
         username: "anna",
         password: "password123member"
     }
+];
+
+const blogs = [
+    {
+        id: 1,
+        title: "Blog 1",
+        content: "Content of Blog 1",
+        username: "john",
+    },
+    {
+        id: 2,
+        title: "Blog 2",
+        content: "Content of Blog 2",
+        username: "dara koko",
+    },
+    {
+        id: 3,
+        title: "Blog 3",
+        content: "Content of Blog 3",
+        username: 'anna'
+    }
 ]
 
 
 app.get("/", (req, res) => {
     res.send("Hello World");
-})
+});
+
+app.get("/blogs", authenticateToken, (req, res) => {
+        console.log('req.user', req.user);
+        const userName = req.user.username;
+        const blogPostByUsername = blogs.filter(blog => blog.username === userName)
+        res.json(blogPostByUsername);  
+});
 
 app.post("/register", async (req, res) => {
     const username = req.body.username;
@@ -100,8 +128,14 @@ app.post("/login", async(req, res)=> {
 
         console.log('process.env.SECRET_KEY', process.env.SECRET_KEY);
         // retrurn token to user;
-        const usernameData = user.username;
-        const access_token = jwt.sign(usernameData, process.env.SECRET_KEY)
+        const usernameData = 
+        {
+            username: user.username
+        }
+
+        // 1. userNameData is payload 
+        // 2. process.env.SECRET_KEY is secret key
+        const access_token = generateAccessToken(usernameData)
 
         console.log('access_token',access_token);
         return res.status(200).json({
@@ -113,11 +147,30 @@ app.post("/login", async(req, res)=> {
     {
         return res.status(400).send('Username & password is required');
     }
+});
 
 
-})
+function authenticateToken(req, res, next) {
+    const token = req.headers['authorization'];
 
+    if(!token)
+    {
+        return res.status(401).send('Access Token is required because the route is protected');
+    }
 
+    jwt.verify(token, process.env.SECRET_KEY, (err, user) =>{
+        if (err) {
+            return res.status(403).send('Invalid Token');
+        }
+
+        req.user = user;
+        next();
+    })
+}
+
+function generateAccessToken(usernameData){
+    return jwt.sign(usernameData, process.env.SECRET_KEY, {expiresIn: '15m'})
+}
 
 app.listen(PORT, (err) => {
     if (err) console.log("Error in server setup");
